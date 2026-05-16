@@ -178,9 +178,10 @@ def search_content_item(item, anime_title):
             return best
         time.sleep(1)
 
-    # Try broader search
+    # Try broader search with 1080p first
     content_type = item.get('type', 'episode')
-    fallback_queries = []
+    fallback_queries_1080p = []
+    fallback_queries_no_1080p = []
 
     if content_type == 'episode':
         ep_num = item.get('number', 0)
@@ -188,25 +189,44 @@ def search_content_item(item, anime_title):
             ep_int = int(ep_num)
         except (ValueError, TypeError):
             ep_int = 0
-        fallback_queries = [
+        fallback_queries_1080p = [
             f"{anime_title} {ep_int:02d} 1080p",
             f"{anime_title} episode {ep_int} 1080p",
+        ]
+        fallback_queries_no_1080p = [
             f"{anime_title} {ep_int:02d}",
+            f"{anime_title} episode {ep_int}",
         ]
     elif content_type == 'movie':
-        fallback_queries = [
+        fallback_queries_1080p = [
             f"{anime_title} movie 1080p",
             f"{anime_title} film 1080p",
+        ]
+        fallback_queries_no_1080p = [
             f"{anime_title} movie",
+            f"{anime_title} film",
         ]
     else:
-        fallback_queries = [
+        fallback_queries_1080p = [
             f"{anime_title} {content_type} 1080p",
+        ]
+        fallback_queries_no_1080p = [
             f"{anime_title} {content_type}",
         ]
 
-    for query in fallback_queries:
-        log(f"  Fallback search: {query}")
+    # First, try all 1080p queries
+    for query in fallback_queries_1080p:
+        log(f"  Fallback search (1080p): {query}")
+        results = search_nyaa(query)
+        best = find_best_torrent(results)
+        if best:
+            return best
+        time.sleep(1)
+
+    # If nothing found with 1080p, try without 1080p restriction
+    log(f"  No 1080p results found, searching without 1080p restriction...")
+    for query in fallback_queries_no_1080p:
+        log(f"  Fallback search (any quality): {query}")
         results = search_nyaa(query)
         best = find_best_torrent(results)
         if best:
