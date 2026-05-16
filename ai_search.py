@@ -78,7 +78,7 @@ def cerebras_chat(prompt, system_prompt="", max_retries=3):
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
-                model='llama3.1-8b',
+                model='gpt-oss-120b',
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
@@ -101,7 +101,7 @@ def _cerebras_http(prompt, system_prompt="", max_retries=3):
         'Authorization': f'Bearer {CEREBRAS_API_KEY}',
     }
     payload = {
-        'model': 'llama3.1-8b',
+        'model': 'gpt-oss-120b',
         'messages': [
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': prompt}

@@ -13,7 +13,7 @@ GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 GROQ_MODEL = 'llama-3.1-8b-instant'
 
 CEREBRAS_API_KEY = os.environ.get('CEREBRAS_API_KEY', '')
-CEREBRAS_MODEL = 'llama3.1-8b'
+CEREBRAS_MODEL = 'gpt-oss-120b'
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')  # Set by workflow from secrets.ai
 GEMINI_MODEL = 'gemini-2.0-flash'
