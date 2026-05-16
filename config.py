@@ -7,10 +7,13 @@ API keys are hardcoded as defaults but can be overridden via environment variabl
 import os
 
 # ===== AI Configuration =====
-# Groq is PRIMARY, Gemini is BACKUP
+# Groq is PRIMARY, Cerebras is SECONDARY, Gemini is BACKUP
 # Read from environment variable / GitHub Actions secret
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 GROQ_MODEL = 'llama-3.1-8b-instant'
+
+CEREBRAS_API_KEY = os.environ.get('CEREBRAS_API_KEY', '')
+CEREBRAS_MODEL = 'llama-3.3-70b'
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')  # Set by workflow from secrets.ai
 GEMINI_MODEL = 'gemini-2.0-flash'
