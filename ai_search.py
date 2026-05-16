@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AI Search Script - Groq (PRIMARY) / Gemini Flash (BACKUP)
+AI Search Script - Groq (PRIMARY) / Cerebras (SECONDARY) / Gemini Flash (BACKUP)
 Discovers all anime content: Episodes, Movies, Specials, OVA, ONA
 
 IMPORTANT: Only the final JSON is printed to stdout (for pipeline capture).
@@ -15,9 +15,9 @@ import re
 import requests
 from urllib.parse import quote
 
-# Import config with hardcoded keys
+# Import config
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import GROQ_API_KEY, GEMINI_API_KEY, JIKAN_BASE_URL, ANILIST_BASE_URL
+from config import GROQ_API_KEY, CEREBRAS_API_KEY, GEMINI_API_KEY, JIKAN_BASE_URL, ANILIST_BASE_URL
 
 JIKAN_BASE = JIKAN_BASE_URL
 ANILIST_BASE = ANILIST_BASE_URL
@@ -55,6 +55,73 @@ def groq_chat(prompt, system_prompt="", max_retries=3):
             return response.choices[0].message.content
         except Exception as e:
             log(f"[Groq] attempt {attempt+1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+
+    return None
+
+# ===== Cerebras AI (SECONDARY) =====
+def cerebras_chat(prompt, system_prompt="", max_retries=3):
+    """Use Cerebras as secondary AI — very fast inference"""
+    if not CEREBRAS_API_KEY:
+        log("[Cerebras] No API key set, skipping")
+        return None
+
+    try:
+        from cerebras.cloud.sdk import Cerebras
+    except ImportError:
+        log("[Cerebras] cerebras_cloud_sdk not installed, trying direct HTTP...")
+        return _cerebras_http(prompt, system_prompt, max_retries)
+
+    client = Cerebras(api_key=CEREBRAS_API_KEY)
+
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model='llama-3.3-70b',
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=4096,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            log(f"[Cerebras] attempt {attempt+1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+
+    return None
+
+def _cerebras_http(prompt, system_prompt="", max_retries=3):
+    """Direct HTTP fallback for Cerebras when SDK is not installed"""
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {CEREBRAS_API_KEY}',
+    }
+    payload = {
+        'model': 'llama-3.3-70b',
+        'messages': [
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': prompt}
+        ],
+        'temperature': 0.3,
+        'max_tokens': 4096,
+    }
+
+    for attempt in range(max_retries):
+        try:
+            res = requests.post(
+                'https://api.cerebras.ai/v1/chat/completions',
+                headers=headers,
+                json=payload,
+                timeout=60,
+            )
+            res.raise_for_status()
+            return res.json()['choices'][0]['message']['content']
+        except Exception as e:
+            log(f"[Cerebras HTTP] attempt {attempt+1} failed: {e}")
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
 
@@ -114,19 +181,25 @@ def gemini_chat(prompt, system_prompt="", max_retries=3):
     return None
 
 def ai_chat(prompt, system_prompt=""):
-    """Try Groq first, fall back to Gemini"""
+    """Try Groq first, then Cerebras, then Gemini"""
     result = groq_chat(prompt, system_prompt)
     if result:
         log("[AI] Used Groq (primary)")
         return result
 
-    log("[AI] Groq failed, falling back to Gemini Flash...")
+    log("[AI] Groq failed, trying Cerebras...")
+    result = cerebras_chat(prompt, system_prompt)
+    if result:
+        log("[AI] Used Cerebras (secondary)")
+        return result
+
+    log("[AI] Cerebras failed, falling back to Gemini Flash...")
     result = gemini_chat(prompt, system_prompt)
     if result:
         log("[AI] Used Gemini Flash (backup)")
         return result
 
-    log("[AI] Both AI providers failed!")
+    log("[AI] All AI providers failed!")
     return None
 
 # ===== MAL/AniList Data Fetching =====
@@ -459,6 +532,7 @@ def main():
     log(f"{'='*60}\n")
 
     log(f"  Groq API key: {'SET' if GROQ_API_KEY else 'NOT SET'}")
+    log(f"  Cerebras API key: {'SET' if CEREBRAS_API_KEY else 'NOT SET'}")
     log(f"  Gemini API key: {'SET' if GEMINI_API_KEY else 'NOT SET'}")
 
     log("[1/2] Fetching anime data from MAL & AniList...")
