@@ -8,8 +8,8 @@ import os
 
 # ===== AI Configuration =====
 # Groq is PRIMARY, Gemini is BACKUP
-# Keys hardcoded as defaults so the pipeline works without GitHub Secrets
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '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')
+# Read from environment variable / GitHub Actions secret
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 GROQ_MODEL = 'llama-3.1-8b-instant'
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')  # Set by workflow from secrets.ai
